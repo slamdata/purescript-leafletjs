@@ -261,29 +261,152 @@ exports.on_ = function(e) {
         return function(l) {
             return function() {
                 l.on(e, function() {
-                    cb(this)();
+                    cb(e)();
                 });
-                return l;
+                return;
             };
         };
     };
 };
 
-exports.onAddRemove = function(onAdd) {
-    return function(onRemove) {
-        return function(layer) {
-            return function() {
-                var res = {value: undefined};
-                layer.onAdd = function(map) {
-                    res.value = onAdd(this)(map)();
-                    return this;
-                };
-                layer.onRemove = function(map) {
-                    onRemove(this)(map)(res)();
-                    return this;
-                };
-                return res;
-            };
+exports.onAddRemove_ = function(Nothing, Just, onAdd, onRemove, layer) {
+    return function() {
+        var res = {value: Nothing};
+        console.log("!!!");
+        layer.onAdd = function(map) {
+            res.value = onAdd(this, map)();
+            return this;
         };
+        layer.onRemove = function(map) {
+            onRemove(this, map, res.value)();
+            return this;
+        };
+        return res;
+    };
+};
+
+exports.testProp_ = function(Nothing, Just, arr) {
+    return function() {
+        console.log(L);
+        var res = L.DomUtil.testProp(arr);
+        if (res === false) {
+            return Nothing;
+        } else {
+            return Just(res);
+        }
+
+    };
+};
+
+exports.setStyle_ = function(key, val, el) {
+    return function() {
+        el.style[key] = val;
+    };
+};
+
+exports.getSize_ = function(Tuple, leaflet) {
+    return function() {
+        var res = leaflet.getSize();
+        return Tuple(res.x)(res.y);
+    };
+};
+
+exports.any3d_ = function() {
+    return function() {
+        return L.Browser.any3d;
+    };
+};
+
+exports.zoomAnimation_ = function(leaflet) {
+    return function() {
+        return leaflet.options.zoomAnimation;
+    };
+};
+
+exports.getPanes_ = function(leaflet) {
+    return function() {
+        return leaflet._panes;
+    };
+};
+
+exports.containerPointToLayerPoint_ = function(Tuple, point, leaflet) {
+    return function() {
+        var res = leaflet.containerPointToLayerPoint(point);
+        return Tuple(res.x)(res.y);
+    };
+};
+
+exports.latLngToContainerPoint_ = function(Tuple, latLng, leaflet) {
+    return function() {
+        var res = leaflet.latLngToContainerPoint(latLng);
+        return Tuple(res.x)(res.y);
+    };
+};
+
+exports.setPosition_ = function(el) {
+    return function(point) {
+        return function() {
+            L.DomUtil.setPosition(el, {x: point[0], y: point[1]});
+        };
+    };
+};
+
+exports.eventZoom_ = function(Nothing, Just, e) {
+    return function() {
+        if (e.zoom === undefined) {
+            return Nothing
+        } else {
+            return Just(e.zoom);
+        }
+    };
+};
+
+exports.getZoomScale_ = function(zoom) {
+    return function(leaflet) {
+        return function() {
+            return leaflet.getZoomScale(zoom);
+        };
+    };
+};
+
+exports.eventCenter_ = function(Nothing, Just, Tuple, e) {
+    return function() {
+        if (e.center === undefined) {
+            return Nothing;
+        } else {
+            return Just(Tuple(e.center.x)(e.center.y));
+        }
+    };
+};
+
+exports.getMapPanePos_ = function(Tuple, leaflet) {
+    return function() {
+        var res = leaflet._getMapPanePos();
+        return Tuple(res.x)(res.y);
+    };
+};
+
+exports.getCenterOffset_ = function(Tuple, point, leaflet) {
+    return function() {
+        var res = leaflet._getCenterOffset({x: point[0], y: point[1]});
+        return Tuple (res.x) (res.y);
+    };
+};
+
+exports.setTransform_ = function(el, point, scale) {
+    return function() {
+        L.DomUtil.setTransform(el, {x: point[0], y: point[1]}, scale);
+    };
+};
+
+exports.getMaxZoom_ = function(leaflet) {
+    return function() {
+        return leaflet.getMaxZoom();
+    };
+};
+
+exports.getZoom_ = function(leaflet) {
+    return function() {
+        return leaflet.getZoom();
     };
 };

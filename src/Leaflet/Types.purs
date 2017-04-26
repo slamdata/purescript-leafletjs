@@ -22,6 +22,9 @@ data Polyline
 data Polygon
 data Rectangle
 data Renderer
+data Evented
+data Event
+data Zoom
 
 -- layer converters
 tileToLayer ∷ TileLayer → Layer
@@ -47,6 +50,15 @@ circleToLayer = unsafeCoerce
 
 rectangleToLayer ∷ Rectangle → Layer
 rectangleToLayer = unsafeCoerce
+
+mapToEvented ∷ Leaflet → Evented
+mapToEvented = unsafeCoerce
+
+layerToEvented ∷ Layer → Evented
+layerToEvented = unsafeCoerce
+
+zoomToNumber ∷ Zoom → Number
+zoomToNumber = unsafeCoerce
 
 --------------------------------------------------------------------------------
 -- Utility types

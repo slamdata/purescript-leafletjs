@@ -6,7 +6,7 @@ import Color (Color, toHexString)
 import Color as Color
 
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (REF, Ref, readRef, writeRef)
+import Control.Monad.Eff.Ref (REF, Ref)
 import Control.Monad.Eff.Random (RANDOM, random)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
@@ -14,28 +14,33 @@ import Control.Plus (class Plus, empty)
 
 import Data.Array as A
 import Data.Either (Either(..))
+import Data.Int as Int
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, mkFn2, mkFn3, runFn3, runFn5, runFn4, runFn2)
 import Data.Traversable as F
 import Data.Maybe (Maybe(..), maybe)
 import Data.Newtype (wrap)
 import Data.Tuple (Tuple(..))
+import Data.StrMap as SM
 import Data.Path.Pathy (file, dir, (</>), rootDir, currentDir)
 
 import DOM (DOM)
 import DOM.HTML (window)
 import DOM.Node.Types (Element)
 import DOM.Classy.ParentNode (querySelector)
-import DOM.Classy.Element (class IsElement, toElement)
+import DOM.Classy.Element (class IsElement, toElement, setAttribute)
 import DOM.Classy.ParentNode (class IsParentNode)
+import DOM.Classy.Node (appendChild)
 import DOM.HTML.Window (document)
 import Data.URI (URIRef, printURIRef)
 import Data.URI.Types as URI
 
 import Graphics.Canvas (CANVAS)
+import Graphics.Canvas as G
 
 import Debug.Trace as DT
 
 import Leaflet.Types
-import Leaflet.Heatmap (defaultOptions, draw, elementToCanvas)
+import Leaflet.Heatmap
 import Leaflet.Util ((∘))
 
 import HeatmapData (testData)
@@ -107,13 +112,213 @@ foreign import polygon_ ∷ ∀ e r. Array (Array Degrees) → ConvertDict → r
 foreign import rectangle_
   ∷ ∀ e r. Array (Array Degrees) → ConvertDict → r → Eff (dom ∷ DOM|e) Rectangle
 foreign import layer_ ∷ ∀ e. Eff (dom ∷ DOM|e) Layer
-foreign import on_ ∷ ∀ e. String → (Layer → Eff (dom ∷ DOM|e) Unit) → Layer → Eff (dom ∷ DOM|e) Layer
-foreign import onAddRemove
+foreign import on_
+  ∷ ∀ e. String → (Event → Eff (dom ∷ DOM|e) Unit) → Evented → Eff (dom ∷ DOM|e) Unit
+foreign import onAddRemove_
+  ∷ ∀ e a
+  . Fn5
+      (Maybe a)
+      (a → Maybe a)
+      (Fn2 Layer Leaflet (Eff (dom ∷ DOM|e) a))
+      (Fn3 Layer Leaflet (Maybe a) (Eff (dom ∷ DOM|e) Unit))
+      Layer
+      (Eff (dom ∷ DOM, ref ∷ REF|e) (Ref (Maybe a)))
+foreign import getSize_
+  ∷ ∀ e. Fn2 (Int → Int → Point) Leaflet (Eff (dom ∷ DOM|e) Point)
+
+foreign import any3d_
+  ∷ ∀ e. Eff (dom ∷ DOM|e) Boolean
+
+foreign import zoomAnimation_
+  ∷ ∀ e. Leaflet → Eff (dom ∷ DOM|e) Boolean
+
+foreign import getPanes_
+  ∷ ∀ e. Leaflet → Eff (dom ∷ DOM|e) (SM.StrMap Element)
+
+foreign import containerPointToLayerPoint_
+  ∷ ∀ e. Fn3 (Int → Int → Point) (Array Int) Leaflet (Eff (dom ∷ DOM|e) Point)
+
+foreign import latLngToContainerPoint_
+  ∷ ∀ e. Fn3 (Int → Int → Point) (Array Degrees) Leaflet (Eff (dom ∷ DOM|e) Point)
+
+foreign import eventZoom_
+  ∷ ∀ e a. Fn3 (Maybe a) (a → Maybe a) Event (Eff (dom ∷ DOM|e) (Maybe Zoom))
+
+foreign import eventCenter_
+  ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → Tuple a a) Event (Eff (dom ∷ DOM|e) (Maybe Point))
+
+foreign import getZoomScale_
+  ∷ ∀ e. Zoom → Leaflet → Eff (dom ∷ DOM|e) Number
+
+foreign import getMapPanePos_
+  ∷ ∀ e a. Fn2 (a → a → Tuple a a) Leaflet (Eff (dom ∷ DOM|e) Point)
+
+foreign import getCenterOffset_
+  ∷ ∀ e a. Fn3 (a → a → Tuple a a) (Array Int) Leaflet (Eff (dom ∷ DOM|e) Point)
+
+foreign import setTransform_
+  ∷ ∀ e. Fn3 Element (Array Int) Number (Eff (dom ∷ DOM|e) Unit)
+
+foreign import getMaxZoom_
+  ∷ ∀ e. Leaflet → Eff (dom ∷ DOM|e) Zoom
+
+foreign import getZoom_
+  ∷ ∀ e. Leaflet → Eff (dom ∷ DOM|e) Zoom
+
+--------------------------------------------------------------------------------
+-- DOMUtil
+--------------------------------------------------------------------------------
+foreign import testProp_ ∷ ∀ e a. Fn3 a (a → Maybe a) (Array String) (Eff (dom ∷ DOM|e) (Maybe String))
+foreign import setStyle_ ∷ ∀ e. Fn3 String String Element (Eff (dom ∷ DOM|e) Unit)
+foreign import setPosition_ ∷ ∀ e. Element → Array Int → Eff (dom ∷ DOM|e) Unit
+
+getMaxZoom
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m Zoom
+getMaxZoom = liftEff ∘ getMaxZoom_
+
+getZoom
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m Zoom
+getZoom = liftEff ∘ getZoom_
+
+getMapPanePos
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m Point
+getMapPanePos l =
+  liftEff $ runFn2 getMapPanePos_ Tuple l
+
+getCenterOffset
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Point
+  → Leaflet
+  → m Point
+getCenterOffset (Tuple a b) l =
+  liftEff $ runFn3 getCenterOffset_ Tuple [a, b] l
+
+setTransform
+  ∷ ∀ e m n
+  . IsElement n
+  ⇒ MonadEff (dom ∷ DOM|e) m
+  ⇒ n
+  → Point
+  → Number
+  → m Unit
+setTransform n (Tuple a b) scale =
+  liftEff $ runFn3 setTransform_ (toElement n) [a, b] scale
+
+eventCenter
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Event
+  → m (Maybe Point)
+eventCenter e =
+  liftEff $ runFn4 eventCenter_ Nothing Just Tuple e
+
+eventZoom
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Event
+  → m (Maybe Zoom)
+eventZoom e =
+  liftEff $ runFn3 eventZoom_ Nothing Just e
+
+getZoomScale
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Zoom
+  → Leaflet
+  → m Number
+getZoomScale zoom = liftEff ∘ getZoomScale_ zoom
+
+setPosition
+  ∷ ∀ m e n
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ IsElement n
+  ⇒ n
+  → Point
+  → m Unit
+setPosition n (Tuple a b) = liftEff $ setPosition_ (toElement n) [a, b]
+
+containerPointToLayerPoint
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Point
+  → Leaflet
+  → m Point
+containerPointToLayerPoint (Tuple a b) l =
+  liftEff $ runFn3 containerPointToLayerPoint_ Tuple [a, b] l
+
+latLngToContainerPoint
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ LatLng
+  → Leaflet
+  → m Point
+latLngToContainerPoint {lat, lng} l =
+  liftEff $ runFn3 latLngToContainerPoint_ Tuple [lat, lng] l
+
+getPanes
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m (SM.StrMap Element)
+getPanes = liftEff ∘ getPanes_
+
+any3d
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ m Boolean
+any3d = liftEff any3d_
+
+zoomAnimation
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m Boolean
+zoomAnimation = liftEff ∘ zoomAnimation_
+
+getSize
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Leaflet
+  → m Point
+getSize l = liftEff $ runFn2 getSize_ Tuple l
+
+setStyle
+  ∷ ∀ e m n
+  . IsElement n
+  ⇒ MonadEff (dom ∷ DOM|e) m
+  ⇒ String
+  → String
+  → n
+  → m Unit
+setStyle k v n = liftEff $ runFn3 setStyle_ k v $ toElement n
+
+testProp
+  ∷ ∀ e m f
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ F.Foldable f
+  ⇒ f String
+  → m (Maybe String)
+testProp a =
+  liftEff $ runFn3 testProp_ Nothing Just $ A.fromFoldable a
+
+onAddRemove
   ∷ ∀ e a
   . (Layer → Leaflet → Eff (dom ∷ DOM|e) a)
-  → (Layer → Leaflet → a → Eff (dom ∷ DOM|e) Unit)
+  → (Layer → Leaflet → Maybe a → Eff (dom ∷ DOM|e) Unit)
   → Layer
-  → Eff (dom ∷ DOM, ref ∷ REF|e) (Ref a)
+  → Eff (dom ∷ DOM, ref ∷ REF|e) (Ref (Maybe a))
+onAddRemove init finish l =
+  runFn5 onAddRemove_ Nothing Just (mkFn2 init) (mkFn3 finish) l
 
 setView ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ LatLng → Leaflet → m Leaflet
 setView latLng = liftEff ∘ setView_ (converter.convertLatLng latLng)
@@ -199,7 +404,7 @@ rectangle a b =
 layer ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ m Layer
 layer = liftEff $ layer_
 
-on ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ String → (Layer → Eff (dom ∷ DOM|e) Unit) → Layer → m Layer
+on ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ String → (Event → Eff (dom ∷ DOM|e) Unit) → Evented → m Unit
 on e fn l = liftEff $ on_ e fn l
 
 setContent ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ String → Popup → m Popup
@@ -265,6 +470,81 @@ iconConf =
   , iconSize: Tuple 40 40
   }
 
+heatmapOnAdd ∷ ∀ e. Layer → Leaflet → Eff (dom ∷ DOM, canvas ∷ CANVAS|e) _
+heatmapOnAdd lay leaf = do
+  originProp ← testProp [ "transformOrigin", "WebkitTransformOrigin", "msTransformOrigin" ]
+  canvas ← createCanvas
+  let canvasEl = canvasToElement canvas
+  F.for_ originProp \p →
+    setStyle p "50% 50%" canvasEl
+  Tuple x y ← getSize leaf
+  _ ← G.setCanvasWidth (Int.toNumber x) canvas
+  _ ← G.setCanvasHeight (Int.toNumber y) canvas
+  threeD ← any3d
+  isZoom ← zoomAnimation leaf
+  let
+    animClass
+      | threeD && isZoom = "leaflet-zoom-animated"
+      | otherwise = "leaflet-zoom-hide"
+  setAttribute
+    "class"
+    (F.intercalate " " [ "leaflet-ps-heatmap-layer", "leaflet-layer", animClass ])
+    canvasEl
+
+  panes ← getPanes leaf
+  F.for_ (SM.lookup "overlayPane" panes) \pane →
+    appendChild canvasEl pane
+
+  DT.traceAnyA panes
+  DT.traceAnyA canvas
+
+  let
+    redraw = do
+      pure unit
+
+    reset _ = do
+      topLeft ← containerPointToLayerPoint (Tuple 0 0) leaf
+      mapSize ← getSize leaf
+      _ ← G.setCanvasWidth (Int.toNumber x) canvas
+      _ ← G.setCanvasHeight (Int.toNumber y) canvas
+      setPosition canvasEl topLeft
+      redraw
+
+    zoomAnim e = void $ runMaybeT do
+      zoom ← MaybeT $ eventZoom e
+      center ← MaybeT $ eventCenter e
+      scale ← getZoomScale zoom leaf
+      offset ← getCenterOffset center leaf
+      panePos ← getMapPanePos leaf
+      let coord = offset `multiplyPoint` (-1.0 * scale) # flip subtractPoint panePos
+      setTransform canvasEl offset scale
+
+  when (threeD && isZoom) do
+    mapToEvented leaf # on "zoomanim" zoomAnim
+
+  mapToEvented leaf # on "moveend" reset
+
+  pure { redraw: draw canvas }
+
+
+multiplyPoint ∷ Point → Number → Point
+multiplyPoint (Tuple a b) scale
+  | scale < 0.0 =
+      Tuple (Int.floor $ Int.toNumber a / scale) (Int.floor $ Int.toNumber b / scale)
+  | otherwise =
+      Tuple (Int.floor $ Int.toNumber a * scale) (Int.floor $ Int.toNumber b * scale)
+
+subtractPoint ∷ Point → Point → Point
+subtractPoint (Tuple x1 y1) (Tuple x2 y2) = Tuple (x1 - x2) (y1 - y2)
+
+addPoint ∷ Point → Point → Point
+addPoint (Tuple x1 y1) (Tuple x2 y2) = Tuple (x1 + x2) (y1 + y2)
+
+
+heatmapOnRemove ∷ ∀ e. Layer → Leaflet → Maybe _ → Eff (dom ∷ DOM|e) Unit
+heatmapOnRemove lay leaf state = do
+  pure unit
+
 basic ∷ ∀ e n. IsParentNode n ⇒ n → MaybeT (Eff (dom ∷ DOM, random ∷ RANDOM|e)) Unit
 basic doc = void do
   el ← MaybeT $ querySelector (wrap "#map") doc
@@ -305,16 +585,18 @@ heatmap doc = void do
   pure unit
 
 leafletHeatmap
-  ∷ ∀ e n. IsParentNode n ⇒ n → MaybeT (Eff (ref ∷ REF, dom ∷ DOM, random ∷ RANDOM|e)) Unit
+  ∷ ∀ e n
+  . IsParentNode n
+  ⇒ n
+  → MaybeT (Eff (ref ∷ REF, dom ∷ DOM, random ∷ RANDOM, canvas ∷ CANVAS|e)) Unit
 leafletHeatmap doc = void do
   el ← MaybeT $ querySelector (wrap "#heatmap-leaflet") doc
   view ← mkLatLng (-37.87) (175.457)
 
-  lay ← layer >>= on "add" \l → DT.traceAnyA "on Add"
-  layState ← liftEff $ onAddRemove
-        (\l m → DT.traceAnyA "on add" *> pure 1)
-        (\l m i → DT.traceAnyA "on remove" *> DT.traceAnyA i)
-        lay
+  lay ← layer
+  on "add" (\e → DT.traceAnyA "on Add") (layerToEvented lay)
+  layState ←
+    liftEff $ onAddRemove heatmapOnAdd heatmapOnRemove lay
 
   tiles ← tileLayer testURI
   _ ← leaflet el
@@ -322,20 +604,7 @@ leafletHeatmap doc = void do
     >>= setZoom 12
     >>= addLayer (tileToLayer tiles)
     >>= addLayer lay
-    >>= \l → liftEff do
-      a ← readRef layState
-      DT.traceAnyA "after add"
-      DT.traceAnyA a
-      pure l
-    >>= \lc → liftEff do
-      writeRef layState 12
-      pure lc
     >>= removeLayer lay
-    >>= \ll → liftEff do
-      a ← readRef layState
-      DT.traceAnyA layState
-      DT.traceAnyA "after remove"
-      pure ll
   pure unit
 
 main ∷ ∀ e.Eff (ref ∷ REF, canvas ∷ CANVAS, dom ∷ DOM, random ∷ RANDOM|e) Unit

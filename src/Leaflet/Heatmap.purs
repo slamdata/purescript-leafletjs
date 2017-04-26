@@ -6,12 +6,10 @@ import Color (Color)
 import Color as Color
 
 import Control.Monad.Eff (Eff, foreachE)
-import Control.Monad.ST (pureST, ST)
 
 import Data.Array as A
-import Data.Array.ST as AS
 import Data.ArrayBuffer.Types (Uint8ClampedArray)
-import Data.Function.Uncurried (Fn2, Fn3, runFn3, runFn2)
+import Data.Function.Uncurried (Fn2, Fn3, runFn3, runFn2, Fn4, runFn4)
 
 import DOM (DOM)
 import DOM.HTML (window)
@@ -25,13 +23,13 @@ import Graphics.Canvas as G
 import Math as Math
 
 import Unsafe.Coerce (unsafeCoerce)
-import Partial.Unsafe (unsafePartial)
 
 import Leaflet.Util ((∘))
 
 foreign import modifyImageData ∷ Fn2 G.ImageData (Uint8ClampedArray → Uint8ClampedArray) G.ImageData
-foreign import unsafePokeSTArray ∷ ∀ e a h. Fn3 (AS.STArray h a) Int a (Eff (st ∷ ST h|e) Unit)
-foreign import forEUC ∷ ∀ e. Fn3 Int Int (Int → Eff e Unit) (Eff e Unit)
+foreign import unsafeSet ∷ ∀ a. Fn3 Int a (Array a) (Array a)
+foreign import unsafeGet ∷ ∀ a. Fn2 Int (Array a) a
+foreign import unsafeFor ∷ ∀ a. Fn4 Int Int (Array a) (Int → Array a) (Array a)
 
 asIntArray ∷ Uint8ClampedArray → Array Int
 asIntArray = unsafeCoerce
@@ -52,6 +50,9 @@ createCanvas = do
 
 elementToCanvas ∷ Element → G.CanvasElement
 elementToCanvas = unsafeCoerce
+
+canvasToElement ∷ G.CanvasElement → Element
+canvasToElement = unsafeCoerce
 
 type HeatmapPoint = { x ∷ Number, y ∷ Number, i ∷ Number }
 
@@ -143,18 +144,17 @@ defaultOptions =
   }
 
 colorize ∷ Array Int → Array Int → Array Int
-colorize grs circle = pureST do
-  -- Using `circle` is totally unsafe after this function, but `thaw` adds about `50ms`
-  crcl ← effPure $ unsafeCoerce circle
-  runFn3 forEUC 0 (len - 1) \i →
+colorize grs circle =
+  -- Using `circle` is totally unsafe after `colorize`
+  runFn4 unsafeFor 0 (len - 1) circle \i →
     if i `mod` 4 /= 0
-    then effUnit
-    else do
-    let j = unsafePartial $ A.unsafeIndex circle $ i + 3
-    runFn3 unsafePokeSTArray crcl i $ unsafePartial $ A.unsafeIndex grs (j * 4)
-    runFn3 unsafePokeSTArray crcl (i + 1) $ unsafePartial $ A.unsafeIndex grs $ (j * 4) + 1
-    runFn3 unsafePokeSTArray crcl (i + 2) $ unsafePartial $ A.unsafeIndex grs $ (j * 4) + 2
-  AS.unsafeFreeze crcl
+    then circle
+    else
+    let j = runFn2 unsafeGet (i + 3) circle
+    in runFn3 unsafeSet i (runFn2 unsafeGet (j * 4) grs)
+       $ runFn3 unsafeSet (i + 1) (runFn2 unsafeGet (j * 4 + 1) grs)
+       $ runFn3 unsafeSet (i + 2) (runFn2 unsafeGet (j * 4 + 2) grs)
+       $ circle
   where
   len ∷ Int
   len = A.length circle
