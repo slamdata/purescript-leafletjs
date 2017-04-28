@@ -85,6 +85,7 @@ data FillRule
 newtype Degrees = Degrees Number
 type Point = Tuple Int Int
 type LatLng = { lat ∷ Degrees, lng ∷ Degrees }
+type Bounds = Tuple Point Point
 
 --------------------------------------------------------------------------------
 -- Constructor options

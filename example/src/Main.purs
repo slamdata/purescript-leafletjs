@@ -5,7 +5,7 @@ import Prelude
 import Color (Color, toHexString)
 import Color as Color
 
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff, foreachE)
 import Control.Monad.Eff.Ref (REF, Ref)
 import Control.Monad.Eff.Random (RANDOM, random)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
@@ -15,11 +15,13 @@ import Control.Plus (class Plus, empty)
 import Data.Array as A
 import Data.Either (Either(..))
 import Data.Int as Int
-import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn5, mkFn2, mkFn3, runFn3, runFn5, runFn4, runFn2)
+import Data.Function.Uncurried (Fn2, Fn3, Fn4, Fn6, mkFn2, mkFn3, runFn3, runFn6, runFn4, runFn2)
+import Data.List as L
 import Data.Traversable as F
-import Data.Maybe (Maybe(..), maybe)
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Map as Map
 import Data.Newtype (wrap)
-import Data.Tuple (Tuple(..))
+import Data.Tuple (Tuple(..), fst, snd)
 import Data.StrMap as SM
 import Data.Path.Pathy (file, dir, (</>), rootDir, currentDir)
 
@@ -37,6 +39,8 @@ import Data.URI.Types as URI
 import Graphics.Canvas (CANVAS)
 import Graphics.Canvas as G
 
+import Math as Math
+
 import Debug.Trace as DT
 
 import Leaflet.Types
@@ -44,6 +48,8 @@ import Leaflet.Heatmap
 import Leaflet.Util ((∘))
 
 import HeatmapData (testData)
+import HeatmapLayerData (heatmapLayerData)
+import Unsafe.Coerce (unsafeCoerce)
 
 type ConvertDict =
   { printURI ∷ URIRef → String
@@ -116,12 +122,13 @@ foreign import on_
   ∷ ∀ e. String → (Event → Eff (dom ∷ DOM|e) Unit) → Evented → Eff (dom ∷ DOM|e) Unit
 foreign import onAddRemove_
   ∷ ∀ e a
-  . Fn5
+  . Fn6
       (Maybe a)
       (a → Maybe a)
       (Fn2 Layer Leaflet (Eff (dom ∷ DOM|e) a))
       (Fn3 Layer Leaflet (Maybe a) (Eff (dom ∷ DOM|e) Unit))
       Layer
+      Leaflet
       (Eff (dom ∷ DOM, ref ∷ REF|e) (Ref (Maybe a)))
 foreign import getSize_
   ∷ ∀ e. Fn2 (Int → Int → Point) Leaflet (Eff (dom ∷ DOM|e) Point)
@@ -168,9 +175,12 @@ foreign import getZoom_
 --------------------------------------------------------------------------------
 -- DOMUtil
 --------------------------------------------------------------------------------
-foreign import testProp_ ∷ ∀ e a. Fn3 a (a → Maybe a) (Array String) (Eff (dom ∷ DOM|e) (Maybe String))
-foreign import setStyle_ ∷ ∀ e. Fn3 String String Element (Eff (dom ∷ DOM|e) Unit)
-foreign import setPosition_ ∷ ∀ e. Element → Array Int → Eff (dom ∷ DOM|e) Unit
+foreign import testProp_
+  ∷ ∀ e a. Fn3 a (a → Maybe a) (Array String) (Eff (dom ∷ DOM|e) (Maybe String))
+foreign import setStyle_
+  ∷ ∀ e. Fn3 String String Element (Eff (dom ∷ DOM|e) Unit)
+foreign import setPosition_
+  ∷ ∀ e. Element → Array Int → Eff (dom ∷ DOM|e) Unit
 
 getMaxZoom
   ∷ ∀ e m
@@ -312,13 +322,15 @@ testProp a =
   liftEff $ runFn3 testProp_ Nothing Just $ A.fromFoldable a
 
 onAddRemove
-  ∷ ∀ e a
+  ∷ ∀ e a m
+  . MonadEff (dom ∷ DOM, ref ∷ REF|e) m
   . (Layer → Leaflet → Eff (dom ∷ DOM|e) a)
   → (Layer → Leaflet → Maybe a → Eff (dom ∷ DOM|e) Unit)
   → Layer
-  → Eff (dom ∷ DOM, ref ∷ REF|e) (Ref (Maybe a))
-onAddRemove init finish l =
-  runFn5 onAddRemove_ Nothing Just (mkFn2 init) (mkFn3 finish) l
+  → Leaflet
+  → m (Ref (Maybe a))
+onAddRemove init finish l lf =
+  runFn6 onAddRemove_ Nothing Just (mkFn2 init) (mkFn3 finish) l lf
 
 setView ∷ ∀ e m. MonadEff (dom ∷ DOM|e) m ⇒ LatLng → Leaflet → m Leaflet
 setView latLng = liftEff ∘ setView_ (converter.convertLatLng latLng)
@@ -470,61 +482,15 @@ iconConf =
   , iconSize: Tuple 40 40
   }
 
-heatmapOnAdd ∷ ∀ e. Layer → Leaflet → Eff (dom ∷ DOM, canvas ∷ CANVAS|e) _
-heatmapOnAdd lay leaf = do
-  originProp ← testProp [ "transformOrigin", "WebkitTransformOrigin", "msTransformOrigin" ]
-  canvas ← createCanvas
-  let canvasEl = canvasToElement canvas
-  F.for_ originProp \p →
-    setStyle p "50% 50%" canvasEl
-  Tuple x y ← getSize leaf
-  _ ← G.setCanvasWidth (Int.toNumber x) canvas
-  _ ← G.setCanvasHeight (Int.toNumber y) canvas
-  threeD ← any3d
-  isZoom ← zoomAnimation leaf
-  let
-    animClass
-      | threeD && isZoom = "leaflet-zoom-animated"
-      | otherwise = "leaflet-zoom-hide"
-  setAttribute
-    "class"
-    (F.intercalate " " [ "leaflet-ps-heatmap-layer", "leaflet-layer", animClass ])
-    canvasEl
-
-  panes ← getPanes leaf
-  F.for_ (SM.lookup "overlayPane" panes) \pane →
-    appendChild canvasEl pane
-
-  DT.traceAnyA panes
-  DT.traceAnyA canvas
-
-  let
-    redraw = do
-      pure unit
-
-    reset _ = do
-      topLeft ← containerPointToLayerPoint (Tuple 0 0) leaf
-      mapSize ← getSize leaf
-      _ ← G.setCanvasWidth (Int.toNumber x) canvas
-      _ ← G.setCanvasHeight (Int.toNumber y) canvas
-      setPosition canvasEl topLeft
-      redraw
-
-    zoomAnim e = void $ runMaybeT do
-      zoom ← MaybeT $ eventZoom e
-      center ← MaybeT $ eventCenter e
-      scale ← getZoomScale zoom leaf
-      offset ← getCenterOffset center leaf
-      panePos ← getMapPanePos leaf
-      let coord = offset `multiplyPoint` (-1.0 * scale) # flip subtractPoint panePos
-      setTransform canvasEl offset scale
-
-  when (threeD && isZoom) do
-    mapToEvented leaf # on "zoomanim" zoomAnim
-
-  mapToEvented leaf # on "moveend" reset
-
-  pure { redraw: draw canvas }
+heatmapOnAdd
+  ∷ ∀ e f
+  . F.Foldable f
+  ⇒ HeatmapOptions
+  → f { lat ∷ Degrees, lng ∷ Degrees, i ∷ Number }
+  → Layer
+  → Leaflet
+  → Eff (dom ∷ DOM, canvas ∷ CANVAS|e) _
+heatmapOnAdd opts items lay leaf = do
 
 
 multiplyPoint ∷ Point → Number → Point
@@ -540,6 +506,9 @@ subtractPoint (Tuple x1 y1) (Tuple x2 y2) = Tuple (x1 - x2) (y1 - y2)
 addPoint ∷ Point → Point → Point
 addPoint (Tuple x1 y1) (Tuple x2 y2) = Tuple (x1 + x2) (y1 + y2)
 
+contains ∷ Bounds → Point → Boolean
+contains (Tuple (Tuple x1 y1) (Tuple x2 y2)) (Tuple x y) =
+  x >= x1 && x <= x2 && y >= y1 && y <= y2
 
 heatmapOnRemove ∷ ∀ e. Layer → Leaflet → Maybe _ → Eff (dom ∷ DOM|e) Unit
 heatmapOnRemove lay leaf state = do
@@ -574,16 +543,6 @@ basic doc = void do
     >>= addLayer (circleToLayer c)
     >>= addLayer (rectangleToLayer r)
 
-heatmap
-  ∷ ∀ e n
-  . IsParentNode n
-  ⇒ n
-  → MaybeT (Eff (canvas ∷ CANVAS, dom ∷ DOM, random ∷ RANDOM|e)) Unit
-heatmap doc = void do
-  el ← map elementToCanvas $ MaybeT $ querySelector (wrap "canvas#heatmap") doc
-  liftEff $ debugTime "heatmap" $ draw el defaultOptions{maxIntensity = 18.0} testData
-  pure unit
-
 leafletHeatmap
   ∷ ∀ e n
   . IsParentNode n
@@ -596,7 +555,7 @@ leafletHeatmap doc = void do
   lay ← layer
   on "add" (\e → DT.traceAnyA "on Add") (layerToEvented lay)
   layState ←
-    liftEff $ onAddRemove heatmapOnAdd heatmapOnRemove lay
+    liftEff $ onAddRemove (heatmapOnAdd defaultOptions heatmapLayerData) heatmapOnRemove lay leaf
 
   tiles ← tileLayer testURI
   _ ← leaflet el
@@ -611,6 +570,5 @@ main ∷ ∀ e.Eff (ref ∷ REF, canvas ∷ CANVAS, dom ∷ DOM, random ∷ RAND
 main = onload do
   doc ← window >>= document
   void $ runMaybeT do
---    basic doc
---    heatmap doc
+    basic doc
     leafletHeatmap doc

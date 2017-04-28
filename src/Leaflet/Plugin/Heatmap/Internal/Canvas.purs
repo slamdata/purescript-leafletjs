@@ -1,4 +1,11 @@
-module Leaflet.Heatmap where
+module Leaflet.Plugin.Heatmap.Internal.Canvas
+  ( draw
+  , createCanvas
+  , canvasToElement
+  , HeatmapOptions
+  , HeatmapPoint
+  , module G
+  ) where
 
 import Prelude
 
@@ -80,6 +87,7 @@ radius
 radius r blur = do
   canvas ← createCanvas
   _ ← G.setCanvasDimensions { width: dia, height: dia } canvas
+
   ctx ← G.getContext2D canvas
   _ ← G.setShadowOffsetX dia ctx
   _ ← G.setShadowOffsetY dia ctx
@@ -89,6 +97,7 @@ radius r blur = do
   _ ← G.arc ctx {x: -1.0 * rad, y: -1.0 * rad, r: r, start: 0.0, end: Math.pi * 2.0 }
   _ ← G.closePath ctx
   _ ← G.fill ctx
+
   effPure $ G.canvasElementToImageSource canvas
   where
   rad = r + blur

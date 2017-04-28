@@ -269,7 +269,7 @@ exports.on_ = function(e) {
     };
 };
 
-exports.onAddRemove_ = function(Nothing, Just, onAdd, onRemove, layer) {
+exports.onAddRemove_ = function(Nothing, Just, onAdd, onRemove, layer, map) {
     return function() {
         var res = {value: Nothing};
         console.log("!!!");
