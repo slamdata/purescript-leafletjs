@@ -1,7 +1,7 @@
 module HeatmapLayerData where
 
 import Prelude
-import Leaflet.Types (Degrees)
+import Leaflet.Core (Degrees)
 import Unsafe.Coerce (unsafeCoerce)
 
 heatmapLayerData ∷ Array {lat ∷ Degrees, lng ∷ Degrees, i ∷ Number }

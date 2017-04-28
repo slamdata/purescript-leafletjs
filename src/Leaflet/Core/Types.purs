@@ -1,4 +1,4 @@
-module Leaflet.Types where
+module Leaflet.Core.Types where
 
 import Color (Color)
 import Data.Tuple (Tuple)
@@ -25,6 +25,7 @@ data Renderer
 data Evented
 data Event
 data Zoom
+data Degrees
 
 -- layer converters
 tileToLayer ∷ TileLayer → Layer
@@ -60,6 +61,9 @@ layerToEvented = unsafeCoerce
 zoomToNumber ∷ Zoom → Number
 zoomToNumber = unsafeCoerce
 
+degreesToNumber ∷ Degrees → Number
+degreesToNumber = unsafeCoerce
+
 --------------------------------------------------------------------------------
 -- Utility types
 --------------------------------------------------------------------------------
@@ -82,7 +86,6 @@ data FillRule
   | EvenOdd
   | Inherit
 
-newtype Degrees = Degrees Number
 type Point = Tuple Int Int
 type LatLng = { lat ∷ Degrees, lng ∷ Degrees }
 type Bounds = Tuple Point Point

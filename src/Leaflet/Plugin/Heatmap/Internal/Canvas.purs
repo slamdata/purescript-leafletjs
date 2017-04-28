@@ -2,6 +2,7 @@ module Leaflet.Plugin.Heatmap.Internal.Canvas
   ( draw
   , createCanvas
   , canvasToElement
+  , defaultOptions
   , HeatmapOptions
   , HeatmapPoint
   , module G
