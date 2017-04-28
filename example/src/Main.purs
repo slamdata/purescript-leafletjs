@@ -32,8 +32,6 @@ import Leaflet.Util ((×))
 
 import HeatmapLayerData (heatmapLayerData)
 
-foreign import debugTime ∷ ∀ e a. String → Eff e a → Eff e a
-
 foreign import onload ∷ ∀ e a. Eff e a → Eff e a
 
 mkLatLngs ∷ ∀ e. MaybeT (Eff (dom ∷ DOM, random ∷ RANDOM|e)) (Array LC.LatLng)

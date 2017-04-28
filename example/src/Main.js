@@ -5,16 +5,3 @@ exports.onload = function(ef) {
         };
     };
 };
-
-
-
-exports.debugTime = function(tag) {
-    return function(act) {
-        return function() {
-            console.time(tag);
-            var res = act();
-            console.timeEnd(tag);
-            return res;
-        };
-    };
-};
