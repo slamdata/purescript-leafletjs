@@ -10,7 +10,7 @@
     "purescript-prelude": "^3.0.0",
     "purescript-eff": "^3.1.0",
     "purescript-dom": "^4.2.0",
-    "purescript-dom-classy": "^2.0.0",
+    "purescript-dom-classy": "^2.1.0",
     "purescript-transformers": "^3.2.0",
     "purescript-control": "^3.0.0",
     "purescript-uri": "^3.0.0",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "purescript-debug": "^3.0.0",
-    "purescript-random": "^3.0.0"
+    "purescript-random": "^3.0.0",
+    "purescript-gen": "^1.1.0"
   }
 }
