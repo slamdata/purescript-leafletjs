@@ -6,9 +6,9 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (class MonadEff, liftEff)
-import Control.Monad.Eff.Ref (REF, Ref)
+import Control.Monad.Eff.Ref (REF, Ref, newRef, writeRef)
 
-import Data.Function.Uncurried (Fn2, Fn3, Fn6, runFn6, mkFn2, mkFn3)
+import Data.Function.Uncurried (Fn2, Fn3, Fn8, runFn8, mkFn2, mkFn3)
 import Data.Maybe (Maybe(..))
 
 import DOM (DOM)
@@ -17,9 +17,11 @@ import Leaflet.Core.Types as T
 
 foreign import onAddRemove_
   ∷ ∀ e a
-  . Fn6
+  . Fn8
       (Maybe a)
       (a → Maybe a)
+      (a → Eff (ref ∷ REF |e) (Ref a))
+      (Ref a → a → Eff (ref ∷ REF|e) Unit)
       (Fn2 T.Layer T.Leaflet (Eff (dom ∷ DOM|e) a))
       (Fn3 T.Layer T.Leaflet (Maybe a) (Eff (dom ∷ DOM|e) Unit))
       T.Layer
@@ -35,4 +37,4 @@ onAddRemove
   → T.Leaflet
   → m (Ref (Maybe a))
 onAddRemove init finish l lf =
-  liftEff $ runFn6 onAddRemove_ Nothing Just (mkFn2 init) (mkFn3 finish) l lf
+  liftEff $ runFn8 onAddRemove_ Nothing Just newRef writeRef (mkFn2 init) (mkFn3 finish) l lf

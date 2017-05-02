@@ -1,8 +1,9 @@
-exports.onAddRemove_ = function(Nothing, Just, onAdd, onRemove, layer, map) {
+exports.onAddRemove_ = function(Nothing, Just, newRef, writeRef, onAdd, onRemove, layer, map) {
     return function() {
-        var res = {value: Nothing};
+        var res = newRef(Nothing)();
         layer.onAdd = function(map) {
-            res.value = onAdd(this, map)();
+            var value = onAdd(this, map)();
+            writeRef(res)(value)();
             return this;
         };
         layer.onRemove = function(map) {
