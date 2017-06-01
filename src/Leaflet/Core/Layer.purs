@@ -4,6 +4,8 @@ module Leaflet.Core.Layer
   , marker
   , icon
   , popup
+  , setURI
+  , setContent
   , setLatLng
   , openOn
   , bindPopup
@@ -14,9 +16,11 @@ module Leaflet.Core.Layer
   , polygon
   , rectangle
   , on
+  , once
   , setIcon
   , addLayer
   , removeLayer
+  , layerGroup
   ) where
 
 import Prelude
@@ -51,6 +55,9 @@ foreign import icon_
 foreign import popup_
   ∷ ∀ e r. Fn2 ConvertDict r (Eff (dom ∷ DOM|e) T.Popup)
 
+foreign import setURI_
+  ∷ ∀ e. Fn2 String T.TileLayer (Eff (dom ∷ DOM|e) T.TileLayer)
+
 foreign import setLatLng_
   ∷ ∀ e. Fn2 (Array T.Degrees) T.Popup (Eff (dom ∷ DOM|e) T.Popup)
 
@@ -84,6 +91,9 @@ foreign import rectangle_
 foreign import on_
   ∷ ∀ e. Fn3 String (T.Event → Eff (dom ∷ DOM|e) Unit) T.Evented (Eff (dom ∷ DOM|e) Unit)
 
+foreign import once_
+  ∷ ∀ e. Fn3 String (T.Event → Eff (dom ∷ DOM|e) Unit) T.Evented (Eff (dom ∷ DOM|e) Unit)
+
 foreign import setIcon_
   ∷ ∀ e. Fn2 T.Icon T.Marker (Eff (dom ∷ DOM|e) T.Marker)
 
@@ -93,6 +103,18 @@ foreign import addLayer_
 foreign import removeLayer_
   ∷ ∀ e. Fn2 T.Layer T.Leaflet (Eff (dom ∷ DOM|e) T.Leaflet)
 
+foreign import layerGroup_
+  ∷ ∀ e. Array T.Layer → Eff (dom ∷ DOM|e) T.LayerGroup
+
+
+layerGroup
+  ∷ ∀ e m f
+  . Foldable f
+  ⇒ MonadEff (dom ∷ DOM|e) m
+  ⇒ f T.Layer
+  → m T.LayerGroup
+layerGroup =
+  liftEff ∘ layerGroup_ ∘ A.fromFoldable
 
 layer
   ∷ ∀ e m
@@ -133,6 +155,15 @@ popup
   → m T.Popup
 popup r =
   liftEff $ runFn2 popup_ converter r
+
+setURI
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ URIRef
+  → T.TileLayer
+  → m T.TileLayer
+setURI uri tl =
+  liftEff $ runFn2 setURI_ (converter.printURI uri) tl
 
 setLatLng
   ∷ ∀ e m
@@ -227,6 +258,16 @@ on
   → m Unit
 on e fn l =
   liftEff $ runFn3 on_ e fn l
+
+once
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ String
+  → (T.Event → Eff (dom ∷ DOM|e) Unit)
+  → T.Evented
+  → m Unit
+once e fn l =
+  liftEff $ runFn3 once_ e fn l
 
 setIcon
   ∷ ∀ m e

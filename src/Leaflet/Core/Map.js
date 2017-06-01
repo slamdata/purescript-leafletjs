@@ -89,3 +89,9 @@ exports.getZoom_ = function(leaflet) {
         return leaflet.getZoom();
     };
 };
+
+exports.invalidateSize_ = function(b, leaflet) {
+    return function() {
+        return leaflet.invalidateSize(b);
+    };
+};

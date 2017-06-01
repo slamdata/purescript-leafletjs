@@ -26,6 +26,8 @@ data Evented
 data Event
 data Zoom
 data Degrees
+data LayerGroup
+data Control
 
 -- layer converters
 tileToLayer ∷ TileLayer → Layer
@@ -51,6 +53,9 @@ circleToLayer = unsafeCoerce
 
 rectangleToLayer ∷ Rectangle → Layer
 rectangleToLayer = unsafeCoerce
+
+groupToLayer ∷ LayerGroup → Layer
+groupToLayer = unsafeCoerce
 
 mapToEvented ∷ Leaflet → Evented
 mapToEvented = unsafeCoerce
@@ -168,3 +173,19 @@ type PolylineConf r =
 type CircleConf =
   PathConf
   ( radius ∷ Number )
+
+--------------------------------------------------------------------------------
+-- Control options
+--------------------------------------------------------------------------------
+
+type ControlConf r =
+  ( position ∷ String
+  | r)
+
+type LayerControlConf r =
+  ControlConf
+  ( collapsed ∷ Boolean
+  , autoZIndex ∷ Boolean
+  , hideSingleBase ∷ Boolean
+  , sortLayers ∷ Boolean
+  | r )

@@ -1,6 +1,8 @@
 module Leaflet.Core.Event
   ( eventCenter
   , eventZoom
+  , eventContainerPoint
+  , eventLatLng
   ) where
 
 import Prelude
@@ -15,7 +17,7 @@ import Data.Tuple (Tuple(..))
 import DOM (DOM)
 
 import Leaflet.Util (type (×))
-import Leaflet.Core.Types (Point, Zoom, Event)
+import Leaflet.Core.Types (Point, Zoom, Event, LatLng)
 
 
 foreign import eventZoom_
@@ -23,6 +25,12 @@ foreign import eventZoom_
 
 foreign import eventCenter_
   ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → a × a) Event (Eff (dom ∷ DOM|e) (Maybe Point))
+
+foreign import eventContainerPoint_
+  ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → a × a) Event (Eff (dom ∷ DOM|e) (Maybe Point))
+
+foreign import eventLatLng_
+  ∷ ∀ e a. Fn3 (Maybe a) (a → Maybe a) Event (Eff (dom ∷ DOM|e) (Maybe LatLng))
 
 eventCenter
   ∷ ∀ m e
@@ -39,3 +47,20 @@ eventZoom
   → m (Maybe Zoom)
 eventZoom e =
   liftEff $ runFn3 eventZoom_ Nothing Just e
+
+eventContainerPoint
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Event
+  → m (Maybe Point)
+eventContainerPoint e =
+  liftEff $ runFn4 eventContainerPoint_ Nothing Just Tuple e
+
+
+eventLatLng
+  ∷ ∀ m e
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Event
+  → m (Maybe LatLng)
+eventLatLng e =
+  liftEff $ runFn3 eventLatLng_ Nothing Just e
