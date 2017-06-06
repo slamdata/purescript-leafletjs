@@ -173,8 +173,6 @@ exports.rectangle_ = function(latlngs, converter, conf) {
 exports.on_ = function(e, cb, l) {
     return function() {
         l.on(e, function(ev) {
-            console.log("in on");
-            console.log(ev);
             cb(ev)();
         });
     };
