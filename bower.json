@@ -1,5 +1,5 @@
 {
-  "name": "purescript-leaflet",
+  "name": "purescript-leafletjs",
   "ignore": [
     "**/.*",
     "node_modules",

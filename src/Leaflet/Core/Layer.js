@@ -92,6 +92,12 @@ exports.popup_ = function(converter, conf) {
     };
 };
 
+exports.setURI_ = function(uri, layer) {
+    return function() {
+        return layer.setUrl(uri);
+    };
+};
+
 exports.setLatLng_ = function(latlng, popup) {
     return function() {
         return popup.setLatLng(latlng);
@@ -166,11 +172,20 @@ exports.rectangle_ = function(latlngs, converter, conf) {
 
 exports.on_ = function(e, cb, l) {
     return function() {
-        l.on(e, function() {
+        l.on(e, function(ev) {
+            cb(ev)();
+        });
+    };
+};
+
+exports.once_ = function(e, cb, l) {
+    return function() {
+        l.once(e, function() {
             cb(e)();
         });
     };
 };
+
 
 exports.addLayer_ = function(layer, leaflet) {
     return function() {
@@ -183,5 +198,11 @@ exports.removeLayer_ = function(layer, leaflet) {
     return function() {
         leaflet.removeLayer(layer);
         return leaflet;
+    };
+};
+
+exports.layerGroup_ = function(layers) {
+    return function() {
+        return L.layerGroup(layers);
     };
 };

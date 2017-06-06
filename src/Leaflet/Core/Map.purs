@@ -12,6 +12,7 @@ module Leaflet.Core.Map
   , getMaxZoom
   , getZoom
   , latLngToContainerPoint
+  , invalidateSize
   ) where
 
 import Prelude
@@ -69,6 +70,9 @@ foreign import getMaxZoom_
 
 foreign import getZoom_
   ∷ ∀ e. T.Leaflet → Eff (dom ∷ DOM|e) T.Zoom
+
+foreign import invalidateSize_
+  ∷ ∀ e. Fn2 Boolean T.Leaflet (Eff (dom ∷ DOM|e) T.Leaflet)
 
 
 leaflet
@@ -177,3 +181,12 @@ getZoom
   ⇒ T.Leaflet
   → m T.Zoom
 getZoom = liftEff ∘ getZoom_
+
+invalidateSize
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ Boolean
+  → T.Leaflet
+  → m T.Leaflet
+invalidateSize b l =
+  liftEff $ runFn2 invalidateSize_ b l

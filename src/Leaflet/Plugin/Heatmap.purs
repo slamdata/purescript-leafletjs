@@ -20,7 +20,7 @@ import Data.Tuple (fst, snd)
 
 import DOM (DOM)
 import DOM.Classy.Element (setAttribute)
-import DOM.Classy.Node (appendChild)
+import DOM.Classy.Node (appendChild, removeChild)
 
 import Leaflet.Core as LC
 import Leaflet.Plugin.Heatmap.Internal.Canvas as C
@@ -36,12 +36,16 @@ mkHeatmap
   → f { lat ∷ LC.Degrees, lng ∷ LC.Degrees, i ∷ Number }
   → LC.Layer
   → LC.Leaflet
-  → m (Ref (Maybe Unit))
-mkHeatmap opts items lay leaf = do
+  → m (Ref (Maybe C.CanvasElement))
+mkHeatmap opts items lay leaf =
   LC.onAddRemove (onAdd opts items) onRemove lay leaf
 
-onRemove ∷ ∀ e. LC.Layer → LC.Leaflet → Maybe Unit → Eff e Unit
-onRemove _ _ _ = pure unit
+onRemove ∷ ∀ e. LC.Layer → LC.Leaflet → Maybe C.CanvasElement → Eff (dom ∷ DOM|e) Unit
+onRemove _ leaf mbCanvas = do
+  panes ← LC.getPanes leaf
+  for_ mbCanvas \canvas →
+    for_ (SM.lookup "overlayPane" panes) $ removeChild $ C.canvasToElement canvas
+  pure unit
 
 onAdd
   ∷ ∀ e f
@@ -50,7 +54,7 @@ onAdd
   → f { lat ∷ LC.Degrees, lng ∷ LC.Degrees, i ∷ Number }
   → LC.Layer
   → LC.Leaflet
-  → Eff (dom ∷ DOM, canvas ∷ C.CANVAS|e) Unit
+  → Eff (dom ∷ DOM, canvas ∷ C.CANVAS|e) C.CanvasElement
 onAdd opts items lay leaf = do
   originProp ←
     LC.testProp [ "transformOrigin", "WebkitTransformOrigin", "msTransformOrigin" ]
@@ -103,6 +107,8 @@ onAdd opts items lay leaf = do
   LC.mapToEvented leaf # LC.on "moveend" reset
 
   redraw canvas items opts leaf
+
+  pure canvas
 
 redraw
   ∷ ∀ e f
