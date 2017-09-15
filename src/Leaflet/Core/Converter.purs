@@ -5,7 +5,8 @@ import Prelude
 import Color (Color, toHexString)
 
 import Data.Foldable (intercalate)
-import Data.URI (URIRef, printURIRef)
+import Data.URI (URIRef)
+import Data.URI.URIRef as URIRef
 
 import Leaflet.Core.Types as T
 import Leaflet.Util ((×), (∘))
@@ -24,7 +25,7 @@ type ConvertDict =
 
 converter ∷ ConvertDict
 converter =
-  { printURI: printURIRef
+  { printURI: URIRef.print
   , mkPoint: \(a × b) → [a, b]
   , printColor: toHexString
   , convertLatLng: \{lat, lng} → [lat, lng]
