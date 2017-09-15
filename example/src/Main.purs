@@ -50,7 +50,7 @@ mkLatLngs = do
 testURI ∷ URIRef
 testURI =
   Left $ URI.URI
-  (Just $ URI.URIScheme "http")
+  (Just $ URI.Scheme "http")
   (URI.HierarchicalPart
    (Just $ URI.Authority Nothing [(URI.NameAddress "{s}.tile.osm.org") × Nothing])
    (Just $ Right $ rootDir </> dir "{z}" </> dir "{x}" </> file "{y}.png"))
