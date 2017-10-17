@@ -5,9 +5,11 @@ import Prelude
 import Color (Color, toHexString)
 
 import Data.Foldable (intercalate)
+import Data.String.Regex as RX
+import Data.String.Regex.Flags as RXF
+import Data.String.Regex.Unsafe as URX
 import Data.URI (URIRef)
 import Data.URI.URIRef as URIRef
-
 import Leaflet.Core.Types as T
 import Leaflet.Util ((×), (∘))
 
@@ -23,9 +25,17 @@ type ConvertDict =
   , printFillRule ∷ T.FillRule → String
   }
 
+
+
 converter ∷ ConvertDict
 converter =
-  { printURI: URIRef.print
+  { printURI: \uri →
+     let
+      oRx = URX.unsafeRegex "%7B" RXF.global
+      cRx = URX.unsafeRegex "%7D" RXF.global
+      encodedString = URIRef.print uri
+      replaced = RX.replace oRx "{" $ RX.replace cRx "}" encodedString
+     in replaced
   , mkPoint: \(a × b) → [a, b]
   , printColor: toHexString
   , convertLatLng: \{lat, lng} → [lat, lng]
