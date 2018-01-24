@@ -14,7 +14,7 @@
     "purescript-transformers": "^3.2.0",
     "purescript-control": "^3.0.0",
     "purescript-uri": "^4.0.0",
-    "purescript-colors": "^3.0.0",
+    "purescript-colors": "^4.0.0",
     "purescript-symbols": "^3.0.0",
     "purescript-canvas": "^3.0.0",
     "purescript-math": "^2.0.0",
