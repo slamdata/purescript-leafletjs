@@ -24,7 +24,7 @@ foreign import eventZoom_
   ∷ ∀ e a. Fn3 (Maybe a) (a → Maybe a) Event (Eff (dom ∷ DOM|e) (Maybe Zoom))
 
 foreign import eventCenter_
-  ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → a × a) Event (Eff (dom ∷ DOM|e) (Maybe Point))
+  ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → a × a) Event (Eff (dom ∷ DOM|e) (Maybe LatLng))
 
 foreign import eventContainerPoint_
   ∷ ∀ e a. Fn4 (Maybe a) (a → Maybe a) (a → a → a × a) Event (Eff (dom ∷ DOM|e) (Maybe Point))
@@ -36,7 +36,7 @@ eventCenter
   ∷ ∀ m e
   . MonadEff (dom ∷ DOM|e) m
   ⇒ Event
-  → m (Maybe Point)
+  → m (Maybe LatLng)
 eventCenter e =
   liftEff $ runFn4 eventCenter_ Nothing Just Tuple e
 

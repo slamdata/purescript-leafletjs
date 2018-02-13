@@ -69,10 +69,10 @@ exports.getMapPanePos_ = function(Tuple, leaflet) {
     };
 };
 
-exports.getCenterOffset_ = function(Tuple, point, leaflet) {
-    return function() {
-        var res = leaflet._getCenterOffset({x: point[0], y: point[1]});
-        return Tuple (res.x) (res.y);
+exports.getCenterOffset_ = function(mkPoint, latLng, leaflet) {
+  return function() {
+    var res = leaflet._getCenterOffset(latLng);
+    return mkPoint (res.x) (res.y);
     };
 };
 

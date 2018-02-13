@@ -63,7 +63,7 @@ foreign import getMapPanePos_
   ∷ ∀ e. Fn2 (Int → Int → T.Point) T.Leaflet (Eff (dom ∷ DOM|e) T.Point)
 
 foreign import getCenterOffset_
-  ∷ ∀ e. Fn3 (Int → Int → T.Point) (Array Int) T.Leaflet (Eff (dom ∷ DOM|e) T.Point)
+  ∷ ∀ e. Fn3 (Int → Int → T.Point) T.LatLng T.Leaflet (Eff (dom ∷ DOM|e) T.Point)
 
 foreign import getMaxZoom_
   ∷ ∀ e. T.Leaflet → Eff (dom ∷ DOM|e) T.Zoom
@@ -162,11 +162,11 @@ getMapPanePos l =
 getCenterOffset
   ∷ ∀ e m
   . MonadEff (dom ∷ DOM|e) m
-  ⇒ T.Point
+  ⇒ T.LatLng
   → T.Leaflet
   → m T.Point
-getCenterOffset (a × b) l =
-  liftEff $ runFn3 getCenterOffset_ Tuple [a, b] l
+getCenterOffset a b =
+  liftEff $ runFn3 getCenterOffset_ Tuple a b
 
 getMaxZoom
   ∷ ∀ e m

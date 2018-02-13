@@ -3,7 +3,7 @@ exports.eventCenter_ = function(Nothing, Just, Tuple, e) {
         if (e.center === undefined) {
             return Nothing;
         } else {
-            return Just(Tuple(e.center.x)(e.center.y));
+            return Just(e.center);
         }
     };
 };
