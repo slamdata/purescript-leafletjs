@@ -100,10 +100,9 @@ onAdd opts items lay leaf = do
       offset ← LC.getCenterOffset center leaf
       panePos ← LC.getMapPanePos leaf
       let coord = offset `LC.scalePoint` (-scale) # flip LC.subtractPoint panePos
-      LC.setTransform canvasEl offset scale
+      LC.setTransform canvasEl coord scale
 
   when (threeD && isZoom) $ LC.mapToEvented leaf # LC.on "zoomanim" zoomAnim
-
   LC.mapToEvented leaf # LC.on "moveend" reset
 
   redraw canvas items opts leaf

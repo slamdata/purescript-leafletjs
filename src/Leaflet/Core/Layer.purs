@@ -21,6 +21,7 @@ module Leaflet.Core.Layer
   , addLayer
   , removeLayer
   , layerGroup
+  , off
   ) where
 
 import Prelude
@@ -90,6 +91,9 @@ foreign import rectangle_
 
 foreign import on_
   ∷ ∀ e. Fn3 String (T.Event → Eff (dom ∷ DOM|e) Unit) T.Evented (Eff (dom ∷ DOM|e) Unit)
+
+foreign import off_
+  ∷ ∀ e. Fn2 String T.Evented (Eff (dom ∷ DOM|e) Unit)
 
 foreign import once_
   ∷ ∀ e. Fn3 String (T.Event → Eff (dom ∷ DOM|e) Unit) T.Evented (Eff (dom ∷ DOM|e) Unit)
@@ -268,6 +272,15 @@ once
   → m Unit
 once e fn l =
   liftEff $ runFn3 once_ e fn l
+
+off
+  ∷ ∀ e m
+  . MonadEff (dom ∷ DOM|e) m
+  ⇒ String
+  → T.Evented
+  → m Unit
+off e l =
+  liftEff $ runFn2 off_ e l
 
 setIcon
   ∷ ∀ m e

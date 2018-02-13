@@ -186,6 +186,11 @@ exports.once_ = function(e, cb, l) {
     };
 };
 
+exports.off_ = function(e, l) {
+  return function() {
+    l.off(e);
+  };
+};
 
 exports.addLayer_ = function(layer, leaflet) {
     return function() {
