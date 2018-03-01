@@ -3,18 +3,17 @@ module Leaflet.Core.Converter where
 import Prelude
 
 import Color (Color, toHexString)
-
 import Data.Foldable (intercalate)
 import Data.String.Regex as RX
 import Data.String.Regex.Flags as RXF
 import Data.String.Regex.Unsafe as URX
-import Data.URI (URIRef)
-import Data.URI.URIRef as URIRef
+import Leaflet.Core.Types (LeafURIRef)
 import Leaflet.Core.Types as T
 import Leaflet.Util ((×), (∘))
+import URI.URIRef as URIRef
 
 type ConvertDict =
-  { printURI ∷ URIRef → String
+  { printURI ∷ LeafURIRef → String
   , mkPoint ∷ T.Point → Array Int
   , printColor ∷ Color → String
   , convertLatLng ∷ T.LatLng → Array T.Degrees
@@ -33,7 +32,7 @@ converter =
      let
       oRx = URX.unsafeRegex "%7B" RXF.global
       cRx = URX.unsafeRegex "%7D" RXF.global
-      encodedString = URIRef.print uri
+      encodedString = T.runLeafURIRef (\r -> URIRef.print r.opts r.uri) uri
       replaced = RX.replace oRx "{" $ RX.replace cRx "}" encodedString
      in replaced
   , mkPoint: \(a × b) → [a, b]

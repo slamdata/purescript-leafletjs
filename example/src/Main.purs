@@ -3,36 +3,61 @@ module Main where
 import Prelude
 
 import Color as Color
-
 import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Ref (REF)
-import Control.Monad.Eff.Random (RANDOM, random)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Random (RANDOM, random)
+import Control.Monad.Eff.Ref (REF)
 import Control.Monad.Maybe.Trans (MaybeT(..), runMaybeT)
-
+import DOM (DOM)
+import DOM.Classy.ParentNode (class IsParentNode, querySelector)
+import DOM.HTML (window)
+import DOM.HTML.Window (document)
 import Data.Array as A
 import Data.Either (Either(..))
-import Data.Traversable as F
 import Data.Maybe (Maybe(..))
 import Data.Newtype (wrap)
-import Data.Path.Pathy (file, dir, (</>), rootDir, currentDir)
-import Data.URI (URIRef)
-import Data.URI as URI
-
-import DOM (DOM)
-import DOM.HTML (window)
-import DOM.Classy.ParentNode (class IsParentNode, querySelector)
-import DOM.HTML.Window (document)
-
+import Data.String.NonEmpty as NES
+import Data.These (These(..))
+import Data.Traversable as F
+import Data.Tuple (Tuple(..))
 import Graphics.Canvas (CANVAS)
-
+import HeatmapLayerData (heatmapLayerData)
+import Leaflet.Core (mkLeafURIRef)
 import Leaflet.Core as LC
+import Leaflet.Core.Types (LeafURIRef)
 import Leaflet.Plugin.Heatmap as LH
 import Leaflet.Util ((×))
-
-import HeatmapLayerData (heatmapLayerData)
+import Partial.Unsafe (unsafePartial)
+import URI (Authority(..), Fragment, HierPath, HierarchicalPart(..), Host(..), Path(..), PathAbsolute(..), Port, Query, RelPath, RelativePart(..), RelativeRef(..), URI(..), URIRef, UserInfo)
+import URI.Host.RegName as RegName
+import URI.HostPortPair (HostPortPair)
+import URI.HostPortPair as HostPortPair
+import URI.Path.Segment (segmentNZFromString)
+import URI.Path.Segment as PathSegment
+import URI.Scheme as Scheme
+import URI.URIRef (URIRefOptions)
 
 foreign import onload ∷ ∀ e a. Eff e a → Eff e a
+
+type MainURIRef = URIRef UserInfo (HostPortPair Host Port) Path HierPath RelPath Query Fragment
+
+mainURIRefOptions ∷ Record (URIRefOptions UserInfo (HostPortPair Host Port) Path HierPath RelPath Query Fragment)
+mainURIRefOptions =
+  { parseUserInfo: pure
+  , printUserInfo: id
+  , parseHosts: HostPortPair.parser pure pure
+  , printHosts: HostPortPair.print id id
+  , parsePath: pure
+  , printPath: id
+  , parseHierPath: pure
+  , printHierPath: id
+  , parseRelPath: pure
+  , printRelPath: id
+  , parseQuery: pure
+  , printQuery: id
+  , parseFragment: pure
+  , printFragment: id
+  }
 
 mkLatLngs ∷ ∀ e. MaybeT (Eff (dom ∷ DOM, random ∷ RANDOM|e)) (Array LC.LatLng)
 mkLatLngs = do
@@ -47,22 +72,27 @@ mkLatLngs = do
   pure $ A.zipWith (\lat lng → {lat, lng}) lats lngs
 
 
-testURI ∷ URIRef
-testURI =
-  Left $ URI.URI
-  (Just $ URI.Scheme "http")
-  (URI.HierarchicalPart
-   (Just $ URI.Authority Nothing [(URI.NameAddress "{s}.tile.osm.org") × Nothing])
-   (Just $ Right $ rootDir </> dir "{z}" </> dir "{x}" </> file "{y}.png"))
-  Nothing
-  Nothing
+testURI ∷ LeafURIRef
+testURI = mkLeafURIRef
+  { uri: Left $ URI
+      (Scheme.unsafeFromString "http")
+      (HierarchicalPartAuth
+      (Authority Nothing (Just $ This $ NameAddress $ RegName.fromString $ unsafePartial $ NES.unsafeFromString "{s}.tile.osm.org"))
+      (Just $ Path $ map PathSegment.segmentFromString ["{z}", "{x}", "{y}.png"]))
+      Nothing
+      Nothing
+  , opts: mainURIRefOptions
+  }
 
-iconConf ∷ { iconUrl ∷ URIRef, iconSize ∷ LC.Point }
+iconConf ∷ { iconUrl ∷ LeafURIRef, iconSize ∷ LC.Point }
 iconConf =
-  { iconUrl: Right $ URI.RelativeRef
-      (URI.RelativePart Nothing $ Just $ Right $ currentDir </> file "marker.svg")
-      Nothing
-      Nothing
+  { iconUrl: mkLeafURIRef
+      { uri: Right $ RelativeRef
+          (RelativePartNoAuth $ Just $ Left $ PathAbsolute $ Just $ Tuple (segmentNZFromString $ unsafePartial $ NES.unsafeFromString "marker.svg") [])
+          Nothing
+          Nothing
+      , opts: mainURIRefOptions
+      }
   , iconSize: 40 × 40
   }
 core

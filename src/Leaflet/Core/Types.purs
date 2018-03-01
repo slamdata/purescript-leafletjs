@@ -2,8 +2,9 @@ module Leaflet.Core.Types where
 
 import Color (Color)
 import Data.Tuple (Tuple)
-import Data.URI (URIRef)
-
+import Type.Data.Boolean (kind Boolean)
+import URI (URIRef)
+import URI.URIRef (URIRefOptions)
 import Unsafe.Coerce (unsafeCoerce)
 --------------------------------------------------------------------------------
 -- Abstract imported types
@@ -28,6 +29,27 @@ data Zoom
 data Degrees
 data LayerGroup
 data Control
+data LeafURIRef
+
+type LeafURIRefR userInfo hosts path hierPath relPath query fragment =
+  { uri :: URIRef userInfo hosts path hierPath relPath query fragment
+  , opts :: Record (URIRefOptions userInfo hosts path hierPath relPath query fragment)
+  }
+
+mkLeafURIRef
+  :: forall userInfo hosts path hierPath relPath query fragment
+   . LeafURIRefR userInfo hosts path hierPath relPath query fragment
+  -> LeafURIRef
+mkLeafURIRef = unsafeCoerce
+
+runLeafURIRef
+  :: forall r
+  . (forall userInfo hosts path hierPath relPath query fragment
+    . LeafURIRefR userInfo hosts path hierPath relPath query fragment
+    -> r)
+  -> LeafURIRef
+  -> r
+runLeafURIRef = unsafeCoerce
 
 -- layer converters
 tileToLayer ∷ TileLayer → Layer
@@ -132,13 +154,13 @@ type PopupConf =
 
 type IconConf =
   InteractiveLayerConf
-  ( iconUrl ∷ URIRef
-  , iconRetinaUrl ∷ URIRef
+  ( iconUrl ∷ LeafURIRef
+  , iconRetinaUrl ∷ LeafURIRef
   , iconSize ∷ Point
   , iconAnchor ∷ Point
   , popupAnchor ∷ Point
-  , shadowUrl ∷ URIRef
-  , shadowRetinaUrl ∷ URIRef
+  , shadowUrl ∷ LeafURIRef
+  , shadowRetinaUrl ∷ LeafURIRef
   , shadowSize ∷ Point
   , shadowAnchor ∷ Point
   , className ∷ String
@@ -189,3 +211,5 @@ type LayerControlConf r =
   , hideSingleBase ∷ Boolean
   , sortLayers ∷ Boolean
   | r )
+
+

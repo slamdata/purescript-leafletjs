@@ -33,7 +33,7 @@ import Data.Array as A
 import Data.Foldable (class Foldable, foldMap)
 import Data.Function.Uncurried (Fn2, Fn3, runFn2, runFn3)
 import Data.Maybe (Maybe(..))
-import Data.URI (URIRef)
+import Leaflet.Core.Types (LeafURIRef)
 
 import DOM (DOM)
 
@@ -129,7 +129,7 @@ layer = liftEff layer_
 tileLayer
   ∷ ∀ e m
   . MonadEff (dom ∷ DOM|e) m
-  ⇒ URIRef
+  ⇒ LeafURIRef
   → m T.TileLayer
 tileLayer =
   liftEff ∘ tileLayer_ ∘ converter.printURI
@@ -163,7 +163,7 @@ popup r =
 setURI
   ∷ ∀ e m
   . MonadEff (dom ∷ DOM|e) m
-  ⇒ URIRef
+  ⇒ LeafURIRef
   → T.TileLayer
   → m T.TileLayer
 setURI uri tl =
