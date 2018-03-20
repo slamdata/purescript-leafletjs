@@ -78,7 +78,7 @@ testURI = mkLeafURIRef
       (Scheme.unsafeFromString "http")
       (HierarchicalPartAuth
       (Authority Nothing (Just $ This $ NameAddress $ RegName.fromString $ unsafePartial $ NES.unsafeFromString "{s}.tile.osm.org"))
-      (Just $ Path $ map PathSegment.segmentFromString ["{z}", "{x}", "{y}.png"]))
+      (Path $ map PathSegment.segmentFromString ["{z}", "{x}", "{y}.png"]))
       Nothing
       Nothing
   , opts: mainURIRefOptions
