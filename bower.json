@@ -13,7 +13,7 @@
     "purescript-dom-classy": "^2.1.0",
     "purescript-transformers": "^3.2.0",
     "purescript-control": "^3.0.0",
-    "purescript-uri": "garyb/purescript-uri#next",
+    "purescript-uri": "^5.0.0",
     "purescript-colors": "^4.0.0",
     "purescript-symbols": "^3.0.0",
     "purescript-canvas": "^3.0.0",
